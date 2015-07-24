@@ -3,7 +3,7 @@
 		<ProjectName>ICP Comms Platform</ProjectName>
 		<ProjectActive>true</ProjectActive>
 		<DirectoryPath>C:\test</DirectoryPath>
-		<KeepDays>15</KeepDays>
+		<KeepDays>0</KeepDays>
 		<DeleteMasks>*.txt;*.xml</DeleteMasks>
 	</PurgeConfig>
 	<PurgeConfig>

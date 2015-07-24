@@ -1,9 +1,9 @@
 <#
-Author: 				James Corbould
+Author: 					James Corbould
 Company:				Datacom Systems NZ Ltd
 Purpose: 				Powershell script to archive files on Windows systems.
 Dependency List:	.NET 3.5 minimum needs to be installed on the running machine.
-							Powershell needs to be installed on the running machine.
+								Powershell needs to be installed on the running machine.
 Change History:
 Version			Date					Who			Change Description
 -----------		----------------		-------		----------------------------
@@ -93,29 +93,26 @@ Function GetXMLConfigFile
 
 Function DoPurgeAndArchive ($PurgeArchiveConfigXML)
 {
-	$ProcessReport = "PurgeArchive Process Status Report`n"
-	$ProcessReport = $ProcessReport + "------------------------------------------------`n`n"
+	$ProcessReport = [string]::Format("PurgeArchive Process Status Report for Computer {0}`n", $_ComputerName)
+	$ProcessReport = $ProcessReport + "------------------------------------------------------------------------------`n`n"
 	$ReadConfig = $true
 	
 	if ($PurgeArchiveConfigXML -ne $null)
 	{
-		Write-Host here
-		Write-Host $PurgeArchiveConfigXML.toString()
 		# Loop through each project config and delete files matching the file mask(s).
 		foreach($PC in $PurgeArchiveConfigXML.PurgeArchiveConfigs.PurgeConfig)
 		{
 			try
 			{
-				Write-Host here 2
 				$ProjectName = $PC.ProjectName
 				$ProjectActive = $PC.ProjectActive
 				$DirectoryPath = $PC.DirectoryPath
 				$KeepDays = $PC.KeepDays
 				$DeleteMaskList = $PC.DeleteMasks
+				$DeleteMaskArray = $DeleteMaskList -split ";"
 				$CreationTimeLimit = (Get-Date).AddDays(-$DeleteDays)
 				$FilesCount = 0
 				$FilesDeletedCount = 0
-				Write-Host projectname $ProjectName
 			}
 			catch [System.Exception]
 			{
@@ -134,26 +131,26 @@ Function DoPurgeAndArchive ($PurgeArchiveConfigXML)
 				{
 					try
 					{
-						if($DeleteMaskList.Length -eq 0)
+						if($DeleteMaskArray.Count -eq 0)
 						{
 							$FilesCount = (Get-ChildItem -Path:$DirectoryPath -Recurse -Force).Count
 							
 							# No delete list specified, so delete **all** files in the specified directory path.
-							Get-ChildItem -Path:$DirectoryPath -Recurse -Force | Where-Object { !$_.PSIsContainer -and $_.CreationTime -lt $CreationTimeLimit } | Remove-Item -Force
+							Get-ChildItem -Path:$DirectoryPath -Recurse -Force | Where-Object { !$_.PSIsContainer -and $_.CreationTime -le $CreationTimeLimit } | Remove-Item -Force
 							
 							$FilesDeletedCount = $FilesCount - (Get-ChildItem -Path:$DirectoryPath -Recurse -Force).Count
 						}
-						elseif($DeleteMaskList.Length -ne 0)
+						elseif($DeleteMaskArray.Count -ne 0)
 						{
 							$FilesCount = (Get-ChildItem -Path:$DirectoryPath -Recurse -Force).Count
 							
 							# Delete list specified, so only delete those files that match the file mask.
-							Get-ChildItem -Path:$DirectoryPath -Include:$DeleteMaskList -Recurse -Force | Where-Object { !$_.PSIsContainer -and $_.CreationTime -lt $CreationTimeLimit } | Remove-Item -Force
+							Get-ChildItem -Path:$DirectoryPath -Include:$DeleteMaskArray -Recurse -Force | Where-Object { !$_.PSIsContainer -and $_.CreationTime -le $CreationTimeLimit } | Remove-Item -Force
 							
 							$FilesDeletedCount = $FilesCount - (Get-ChildItem -Path:$DirectoryPath -Recurse -Force).Count
 						}
 						
-						$ProcessReport = $ProcessReport + [string]::Format("Success - Purged {0} files older than {1} days' from directory '{2}'.`n`n", $FilesDeletedCount, $KeepDays, $DirectoryPath)
+						$ProcessReport = $ProcessReport + [string]::Format("Success - Purged {0} file(s) older than {1} days' from directory '{2}'.`n`n", $FilesDeletedCount, $KeepDays, $DirectoryPath)
 					}
 					catch [System.Exception]
 					{
@@ -179,7 +176,7 @@ Function DoPurgeAndArchive ($PurgeArchiveConfigXML)
 		$ProcessReport = $ProcessReport + "Unexpected fatal error: The 'PurgeArchive' configuration XML file cannot be read."
 	}
 
-	$ProcessReport = $ProcessReport + "`n`n------------------------------------------------`n"
+	$ProcessReport = $ProcessReport + "------------------------------------------------------------------------------`n"
 	$ProcessReport = $ProcessReport + "End of Report"
 
 	WriteToEventLog $_LogName $_LogSourceName $_ComputerName "Information" 1 $ProcessReport
@@ -193,4 +190,4 @@ Function DoPurgeAndArchive ($PurgeArchiveConfigXML)
 CreateLog $_LogName $_LogSourceName $_ComputerName > $null
 
 $xmlConfigFile = GetXMLConfigFile
-DoPurgeAndArchive $xmlConfigFile
+DoPurgeAndArchive $xmlConfigFile > $null
