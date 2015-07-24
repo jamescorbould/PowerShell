@@ -13,4 +13,11 @@
 		<KeepDays>20</KeepDays>
 		<DeleteMasks>*.msi;*.xml</DeleteMasks>
 	</PurgeConfig>
+	<ArchiveConfig>
+		<ProjectName>ICP Comms Platform</ProjectName>
+		<ProjectActive>true</ProjectActive>
+		<DirectoryPath>C:\test</DirectoryPath>
+		<ArchiveGreaterThanDays>0</ArchiveGreaterThanDays>
+		<ArchiveMasks></ArchiveMasks>
+	</ArchiveConfig>
 </PurgeArchiveConfigs>
