@@ -1,0 +1,16 @@
+<PurgeArchiveConfigs>
+	<PurgeConfig>
+		<ProjectName>ICP Comms Platform</ProjectName>
+		<ProjectActive>true</ProjectActive>
+		<DirectoryPath>C:\test</DirectoryPath>
+		<KeepDays>15</KeepDays>
+		<DeleteMasks>*.txt;*.xml</DeleteMasks>
+	</PurgeConfig>
+	<PurgeConfig>
+		<ProjectName>ICP Comms Platform 2</ProjectName>
+		<ProjectActive>false</ProjectActive>
+		<DirectoryPath>C:\test - Copy</DirectoryPath>
+		<KeepDays>20</KeepDays>
+		<DeleteMasks>*.msi;*.xml</DeleteMasks>
+	</PurgeConfig>
+</PurgeArchiveConfigs>
