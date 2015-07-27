@@ -109,7 +109,25 @@ Function ZipFiles ($DirectoryPath, $ZipFileName, $ArchiveMaskArray, $CreationTim
 	$writer.write($bytes)
 	$writer.Close()
 	 
-	$target.CopyHere($source.Items() | ls *.pdf)
+	#$target.CopyHere($source.Items() | ls *.pdf)
+}
+
+Function Create7ZipFile ($DirectoryPath, $ZipFileName, $ArchiveMaskArray, $CreationTimeLimit)
+{
+	try
+	{
+		$success = $true
+		$ZipArchiveDestination =  [string]::Format("{0}\{1}", $DirectoryPath, $ZipFileName)
+		$result = & ".\7za.exe" a -tzip $ZipArchiveDestination "C:\test\*.pdf" -r
+		Write-Host result = $result
+	}
+	catch [System.Exception]
+	{
+		WriteToEventLog $_LogName $_LogSourceName $_ComputerName "Error" 1 [string]::Format("Function Create7ZipFile`n{0}", $error[0])
+		#$success = $false
+	}
+	
+	#return $success
 }
 
 Function DoPurge ($PurgeArchiveConfigXML)
@@ -250,7 +268,7 @@ Function DoArchive ($PurgeArchiveConfigXML)
 							$FilesCount = (Get-ChildItem -Path:$DirectoryPath -Recurse -Force).Count
 							
 							# No archive list specified, so archive **all** files in the specified directory path.
-							ZipFiles $DirectoryPath $ZipFileName $ArchiveMaskArray $CreationTimeLimit
+							Create7ZipFile $DirectoryPath $ZipFileName $ArchiveMaskArray $CreationTimeLimit
 							
 							$FilesArchivedCount = ($FilesCount - (Get-ChildItem -Path:$DirectoryPath -Recurse -Force).Count) - 1  # Subtract 1 to account for the zip file.
 						}
