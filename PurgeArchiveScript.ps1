@@ -92,26 +92,6 @@ Function GetXMLConfigFile
 	return $xmlFile
 }
 
-Function ZipFiles ($DirectoryPath, $ZipFileName, $ArchiveMaskArray, $CreationTimeLimit)
-{	 
-	$shell = New-Object -ComObject Shell.Application
-	New-Item -path $DirectoryPath -Name $ZipFileName -Type file
-	
-	$source = $shell.Namespace($DirectoryPath)
-	$target = $shell.Namespace($DirectoryPath + "\" + $ZipFileName)
-	 
-	# Create a file that will be treated by Windows as a compressed type,
-	# by specifying an initial sequence of bytes.
-	[byte[]] $bytes = 80, 75, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-	 
-	$stream = New-Object System.IO.FileStream $target, Create
-	$writer = New-Object System.IO.BinaryWriter($stream)
-	$writer.write($bytes)
-	$writer.Close()
-	 
-	#$target.CopyHere($source.Items() | ls *.pdf)
-}
-
 Function Create7ZipFile ($DirectoryPath, $ZipFileName, $CreationTimeLimit)
 {
 	try
@@ -119,7 +99,6 @@ Function Create7ZipFile ($DirectoryPath, $ZipFileName, $CreationTimeLimit)
 		$success = $true
 		$ZipArchiveDestination =  [string]::Format("{0}\{1}", $DirectoryPath, $ZipFileName)
 		$result = & ".\7za.exe" a -tzip $ZipArchiveDestination "C:\test\*.pdf" -r
-		Write-Host result = $result
 	}
 	catch [System.Exception]
 	{
