@@ -17,7 +17,6 @@
 		<ProjectName>ICP Comms Platform</ProjectName>
 		<ProjectActive>true</ProjectActive>
 		<DirectoryPath>C:\test</DirectoryPath>
-		<ArchiveGreaterThanDays>0</ArchiveGreaterThanDays>
-		<ArchiveMasks></ArchiveMasks>
+		<KeepDays>0</KeepDays>
 	</ArchiveConfig>
 </PurgeArchiveConfigs>

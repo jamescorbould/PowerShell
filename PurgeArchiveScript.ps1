@@ -112,7 +112,7 @@ Function ZipFiles ($DirectoryPath, $ZipFileName, $ArchiveMaskArray, $CreationTim
 	#$target.CopyHere($source.Items() | ls *.pdf)
 }
 
-Function Create7ZipFile ($DirectoryPath, $ZipFileName, $ArchiveMaskArray, $CreationTimeLimit)
+Function Create7ZipFile ($DirectoryPath, $ZipFileName, $CreationTimeLimit)
 {
 	try
 	{
@@ -124,10 +124,10 @@ Function Create7ZipFile ($DirectoryPath, $ZipFileName, $ArchiveMaskArray, $Creat
 	catch [System.Exception]
 	{
 		WriteToEventLog $_LogName $_LogSourceName $_ComputerName "Error" 1 [string]::Format("Function Create7ZipFile`n{0}", $error[0])
-		#$success = $false
+		$success = $false
 	}
 	
-	#return $success
+	return $success
 }
 
 Function DoPurge ($PurgeArchiveConfigXML)
@@ -229,7 +229,7 @@ Function DoArchive ($PurgeArchiveConfigXML)
 	
 	if ($PurgeArchiveConfigXML -ne $null)
 	{
-		# Loop through each project config and archive files matching the file mask(s).
+		# Loop through each project config and archive files in the specified directory.
 		foreach($PC in $PurgeArchiveConfigXML.PurgeArchiveConfigs.ArchiveConfig)
 		{
 			try
@@ -237,13 +237,12 @@ Function DoArchive ($PurgeArchiveConfigXML)
 				$ProjectName = $PC.ProjectName
 				$ProjectActive = $PC.ProjectActive
 				$DirectoryPath = $PC.DirectoryPath
-				$ArchiveDays = $PC.ArchiveGreaterThanDays
-				$ArchiveMaskList = $PC.ArchiveMasks
-				$ArchiveMaskArray = $ArchiveMaskList -split ";"
-				$CreationTimeLimit = (Get-Date).AddDays(-$ArchiveDays)
+				$KeepDays = $PC.KeepDays
+				$CreationTimeLimit = (Get-Date).AddDays(-$KeepDays)
 				$FilesCount = 0
 				$FilesArchivedCount = 0
-				$ZipFileName = $PC.ProjectName + ".zip"
+				$DateTime = [string](Get-Date -Format "yyyy-MM-dd-hh_mm_ss")
+				$ZipFileName = [string]::Format("{0}-{1}{2}", $PC.ProjectName, $DateTime, ".zip")
 			}
 			catch [System.Exception]
 			{
@@ -252,7 +251,7 @@ Function DoArchive ($PurgeArchiveConfigXML)
 				$ReadConfig = $false
 			}
 			
-			$ProcessReport = $ProcessReport + [string]::Format("Project Name: {0}`nActive: {1}`nPurgeArchive Status: ", $ProjectName, $ProjectActive.ToUpper())
+			$ProcessReport = $ProcessReport + [string]::Format("Project Name: {0}`nActive: {1}`nFilename: {2}`nPurgeArchive Status: ", $ProjectName, $ProjectActive.ToUpper(), $ZipFileName)
 			
 			if($ProjectActive.ToUpper() -eq "TRUE" -and $ReadConfig -ne $false)
 			{
@@ -262,26 +261,9 @@ Function DoArchive ($PurgeArchiveConfigXML)
 				{
 					try
 					{
-						Write-Host count $ArchiveMaskArray.Count
-						if($ArchiveMaskArray.Count -le 1)
-						{
-							$FilesCount = (Get-ChildItem -Path:$DirectoryPath -Recurse -Force).Count
-							
-							# No archive list specified, so archive **all** files in the specified directory path.
-							Create7ZipFile $DirectoryPath $ZipFileName $ArchiveMaskArray $CreationTimeLimit
-							
-							$FilesArchivedCount = ($FilesCount - (Get-ChildItem -Path:$DirectoryPath -Recurse -Force).Count) - 1  # Subtract 1 to account for the zip file.
-						}
-						elseif($ArchiveMaskArray.Count -gt 1)
-						{
-							$FilesCount = (Get-ChildItem -Path:$DirectoryPath -Recurse -Force).Count
-							
-							# Archive list specified, so only archive those files that match the file mask.
-							
-							
-							$FilesArchivedCount = ($FilesCount - (Get-ChildItem -Path:$DirectoryPath -Recurse -Force).Count) - 1  # Subtract 1 to account for the zip file.
-						}
-						
+						$FilesCount = (Get-ChildItem -Path:$DirectoryPath -Recurse -Force).Count
+						Create7ZipFile $DirectoryPath $ZipFileName $CreationTimeLimit
+						$FilesArchivedCount = ($FilesCount - (Get-ChildItem -Path:$DirectoryPath -Recurse -Force).Count) - 1  # Subtract 1 to account for the zip file.
 						$ProcessReport = $ProcessReport + [string]::Format("Success - Archived {0} file(s) older than {1} days' from directory '{2}'.`n`n", $FilesArchivedCount, $ArchiveDays, $DirectoryPath)
 					}
 					catch [System.Exception]
@@ -293,9 +275,6 @@ Function DoArchive ($PurgeArchiveConfigXML)
 				{
 					$ProcessReport = $ProcessReport + [string]::Format("Failed - Archive of files older than {0} days' from directory '{1}' could not be carried out.  Directory path does not exist.`n`n", $ArchiveDays, $DirectoryPath)
 				}
-				
-				$ArchiveMaskList = ""
-				$ArchiveMaskArray = $null
 			}
 			elseif($ProjectActive.ToUpper() -eq "FALSE")
 			{
