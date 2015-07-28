@@ -18,5 +18,6 @@
 		<ProjectActive>true</ProjectActive>
 		<DirectoryPath>C:\test</DirectoryPath>
 		<KeepDays>0</KeepDays>
+		<ArchiveMasks>*.txt;*.xml</ArchiveMasks>
 	</ArchiveConfig>
 </PurgeArchiveConfigs>

@@ -17,7 +17,9 @@ Version		Date					Who		Change Description
 [CmdletBinding()]
 Param(
 	[Parameter(Mandatory=$True)]
-	[string]$pFullPurgeArchiveConfigsXMLPath
+	[string]$pFullPurgeArchiveConfigsXMLPath,
+	[Parameter(Mandatory=$True)]
+	[string]$pPurgeOrArchiveSwitch
 )
 
 #================================================
@@ -92,13 +94,29 @@ Function GetXMLConfigFile
 	return $xmlFile
 }
 
-Function Create7ZipFile ($DirectoryPath, $ZipFileName, $CreationTimeLimit)
+Function Create7ZipFile ($DirectoryPath, $ZipFileName, $ArchiveMaskArray, $CreationTimeLimit)
 {
 	try
 	{
 		$success = $true
-		$ZipArchiveDestination =  [string]::Format("{0}\{1}", $DirectoryPath, $ZipFileName)
-		$result = & ".\7za.exe" a -tzip $ZipArchiveDestination "C:\test\*.pdf" -r
+		$ZipArchiveDestination =  [string]::Format("`"{0}\{1}`"", $DirectoryPath, $ZipFileName)
+		$SourceFiles = ""
+		
+		if ($ArchiveMaskArray.Count -le 1)
+		{
+			# No file masks specified - assume all files in the directory should be added to the compressed file.
+			$SourceFiles = [string]::Format("{0}\{1}", $DirectoryPath, "*.*")
+		}
+		else
+		{
+			foreach ($mask in $ArchiveMaskArray)
+			{
+				$SourceFile = [string]::Format("`"{0}\{1}`" ", $DirectoryPath, $mask)
+				$SourceFiles = $SourceFiles + $SourceFile
+			}
+		}
+		
+		$result = & ".\7za.exe" a -tzip $ZipArchiveDestination $SourceFiles -r -mmt
 	}
 	catch [System.Exception]
 	{
@@ -217,6 +235,8 @@ Function DoArchive ($PurgeArchiveConfigXML)
 				$ProjectActive = $PC.ProjectActive
 				$DirectoryPath = $PC.DirectoryPath
 				$KeepDays = $PC.KeepDays
+				$ArchiveMaskList = $PC.ArchiveMasks
+				$ArchiveMaskArray = $ArchiveMaskList -split ";"
 				$CreationTimeLimit = (Get-Date).AddDays(-$KeepDays)
 				$FilesCount = 0
 				$FilesArchivedCount = 0
@@ -241,7 +261,7 @@ Function DoArchive ($PurgeArchiveConfigXML)
 					try
 					{
 						$FilesCount = (Get-ChildItem -Path:$DirectoryPath -Recurse -Force).Count
-						Create7ZipFile $DirectoryPath $ZipFileName $CreationTimeLimit
+						Create7ZipFile $DirectoryPath $ZipFileName $ArchiveMaskArray $CreationTimeLimit
 						$FilesArchivedCount = ($FilesCount - (Get-ChildItem -Path:$DirectoryPath -Recurse -Force).Count) - 1  # Subtract 1 to account for the zip file.
 						$ProcessReport = $ProcessReport + [string]::Format("Success - Archived {0} file(s) older than {1} days' from directory '{2}'.`n`n", $FilesArchivedCount, $ArchiveDays, $DirectoryPath)
 					}
@@ -280,5 +300,17 @@ Function DoArchive ($PurgeArchiveConfigXML)
 CreateLog $_LogName $_LogSourceName $_ComputerName > $null
 
 $xmlConfigFile = GetXMLConfigFile
-DoPurge $xmlConfigFile > $null
-DoArchive $xmlConfigFile
+
+if ($pPurgeOrArchiveSwitch.ToUpper() -eq "P")
+{
+	DoPurge $xmlConfigFile > $null
+}
+elseif ($pPurgeOrArchiveSwitch.ToUpper() -eq "A")
+{
+	DoArchive $xmlConfigFile > $null
+}
+else
+{
+	$errMessage = [string]::Format("Fatal - `"{0}`" switch is not recognised for parameter `"pPurgeOrArchiveSwitch`".", $pPurgeOrArchiveSwitch)
+	WriteToEventLog $_LogName $_LogSourceName $_ComputerName "Error" 1 $errMessage > $null
+}
