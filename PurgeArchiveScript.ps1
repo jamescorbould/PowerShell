@@ -17,9 +17,9 @@ Version		Date					Who		Change Description
 [CmdletBinding()]
 Param(
 	[Parameter(Mandatory=$True)]
-	[string]$pFullPurgeArchiveConfigsXMLPath,
+	[string]$pFullPurgeArchiveConfigsXMLPath,  # Path to XML config file.
 	[Parameter(Mandatory=$True)]
-	[string]$pPurgeOrArchiveSwitch
+	[string]$pPurgeOrArchiveSwitch  # Switch indicating if we should purge or archive.
 )
 
 #================================================
@@ -37,9 +37,7 @@ Function WriteToEventLog ($log, $source, $computername, $type, $eventid, $messag
 	try
 	{
 		$success = $true
-		
 		CreateLog $log $source $computername
-		
 		Write-EventLog -LogName $log -EntryType Error -EventId 1 -Message $message.toString() -Source $source.toString() -ComputerName $computername.toString()
 	}
 	catch [System.Exception]
@@ -117,6 +115,13 @@ Function Create7ZipFile ($DirectoryPath, $ZipFileName, $ArchiveMaskArray, $Creat
 		}
 		
 		$result = & ".\7za.exe" a -tzip $ZipArchiveDestination $SourceFiles -r -mmt
+		
+		if (-not [string]$result.ToUpper() -match 'EVERYTHING IS OK')
+		{
+			$errMessage = [string]::Format("Function Create7ZipFile`nFailed to zip files using 7zip.")
+			WriteToEventLog $_LogName $_LogSourceName $_ComputerName "Error" 1 $errMessage
+			$success = $false
+		}
 	}
 	catch [System.Exception]
 	{
@@ -307,7 +312,7 @@ if ($pPurgeOrArchiveSwitch.ToUpper() -eq "P")
 }
 elseif ($pPurgeOrArchiveSwitch.ToUpper() -eq "A")
 {
-	DoArchive $xmlConfigFile > $null
+	DoArchive $xmlConfigFile
 }
 else
 {
