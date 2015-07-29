@@ -265,19 +265,23 @@ Function DoArchive ($PurgeArchiveConfigXML)
 				{
 					try
 					{
-						$FilesCount = (Get-ChildItem -Path:$DirectoryPath -Recurse -Force).Count
-						Create7ZipFile $DirectoryPath $ZipFileName $ArchiveMaskArray $CreationTimeLimit
-						$FilesArchivedCount = ($FilesCount - (Get-ChildItem -Path:$DirectoryPath -Recurse -Force).Count) - 1  # Subtract 1 to account for the zip file.
-						$ProcessReport = $ProcessReport + [string]::Format("Success - Archived {0} file(s) older than {1} days' from directory '{2}'.`n`n", $FilesArchivedCount, $ArchiveDays, $DirectoryPath)
+						$success = Create7ZipFile $DirectoryPath $ZipFileName $ArchiveMaskArray $CreationTimeLimit
+						
+						if (-not $success)
+						{
+							throw [System.Exception]
+						}
+						
+						$ProcessReport = $ProcessReport + [string]::Format("Success - Archived file(s) older than {0} days' from directory '{1}'.`n`n", $KeepDays, $DirectoryPath)
 					}
 					catch [System.Exception]
 					{
-						$ProcessReport = $ProcessReport + [string]::Format("Failed - Archive of files older than {0} days' from directory '{1}' could not be carried out.`n`n", $ArchiveDays, $DirectoryPath)
+						$ProcessReport = $ProcessReport + [string]::Format("Failed - Archive of files older than {0} days' from directory '{1}' could not be carried out.`n`n", $KeepDays, $DirectoryPath)
 					}
 				}
 				elseif($DirectoryPathExists -eq $FALSE)
 				{
-					$ProcessReport = $ProcessReport + [string]::Format("Failed - Archive of files older than {0} days' from directory '{1}' could not be carried out.  Directory path does not exist.`n`n", $ArchiveDays, $DirectoryPath)
+					$ProcessReport = $ProcessReport + [string]::Format("Failed - Archive of files older than {0} days' from directory '{1}' could not be carried out.  Directory path does not exist.`n`n", $KeepDays, $DirectoryPath)
 				}
 			}
 			elseif($ProjectActive.ToUpper() -eq "FALSE")
@@ -312,7 +316,7 @@ if ($pPurgeOrArchiveSwitch.ToUpper() -eq "P")
 }
 elseif ($pPurgeOrArchiveSwitch.ToUpper() -eq "A")
 {
-	DoArchive $xmlConfigFile
+	DoArchive $xmlConfigFile > $null
 }
 else
 {
