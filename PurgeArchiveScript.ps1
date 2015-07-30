@@ -70,7 +70,8 @@ Function CreateLog ($log, $source, $computername)
 	}
 	catch [System.Exception]
 	{
-		WriteToEventLog "Application" $_LogSourceName $_ComputerName "Error" 1 [string]::Format("Function CreateLog`n{0}", $error[0])
+		$errMessage = [string]::Format("Function CreateLog`n{0}", $error[0])
+		WriteToEventLog "Application" $_LogSourceName $_ComputerName "Error" 1 $errMessage
 		$success = $false
 	}
 	
@@ -85,47 +86,96 @@ Function GetXMLConfigFile
 	}
 	catch [System.Exception]
 	{
-		WriteToEventLog $_LogName $_LogSourceName $_ComputerName "Error" 1 [string]::Format("Function ReturnXMLConfigFile`n{0}", $error[0])
+		$errMessage = [string]::Format("Function ReturnXMLConfigFile`n{0}", $error[0])
+		WriteToEventLog $_LogName $_LogSourceName $_ComputerName "Error" 1 $errMessage
 		$xmlFile = $null
 	}
 	
 	return $xmlFile
 }
 
-Function Create7ZipFile ($DirectoryPath, $ZipFileName, $ArchiveMaskArray, $CreationTimeLimit)
+Function GetFilesOlderThanXDays ($DirectoryPath, $CreationDateLimit)
+{
+	$files = $null
+	
+	try
+	{
+		[Array]$files = Get-ChildItem -Path:$DirectoryPath -Recurse -Force | Where-Object { !$_.PSIsContainer -and $_.CreationTime -le $CreationDateLimit } 
+	}
+	catch [System.Exception]
+	{
+		$errMessage = [string]::Format("Function GetFilesOlderThanXDays`n{0}", $error[0])
+		WriteToEventLog $_LogName $_LogSourceName $_ComputerName "Error" 1 $errMessage
+		$files = $null
+	}
+	
+	return $files
+}
+
+Function Create7ZipFile ($DirectoryPath, $ZipFileName, $ArchiveMaskArray, $CreationDateLimit)
 {
 	try
 	{
 		$success = $true
 		$ZipArchiveDestination =  [string]::Format("`"{0}\{1}`"", $DirectoryPath, $ZipFileName)
 		$SourceFiles = ""
+		$filesToArchive = $null
 		
-		if ($ArchiveMaskArray.Count -le 1)
+		# Get all files in the specified directory older than the date limit for archival.
+		[Array]$filesToArchive = GetFilesOlderThanXDays $DirectoryPath $CreationDateLimit
+		
+		if ($filesToArchive.Count -gt 1)
 		{
-			# No file masks specified - assume all files in the directory should be added to the compressed file.
-			$SourceFiles = [string]::Format("{0}\{1}", $DirectoryPath, "*.*")
+			if ($ArchiveMaskArray.Count -le 1)
+			{
+				# No file masks specified - assume all files in the directory should be added to the compressed file.
+				# Equivalent to the file mask *.*.
+				
+				foreach ($file in $filesToArchive)
+				{
+					$SourceFiles = $SourceFiles + [string]::Format("{0}\{1} ", $DirectoryPath, $file)
+				}
+			}
+			else
+			{
+				# File mask(s) have been specified: only archive files that match the file mask.
+				
+				foreach ($mask in $ArchiveMaskArray)
+				{
+					foreach ($file in $filesToArchive)
+					{
+						$extension = [System.IO.Path]::GetExtension($file)
+						
+						if ([string]$extension.ToUpper() -match $mask.ToUpper())
+						{
+							$SourceFiles = $SourceFiles + [string]::Format("`"{0}\{1}`" ", $DirectoryPath, $file)
+							
+							# Delete this file from the file array to reduce processing time O(n^2)
+							# TODO
+						}
+					}
+				}
+			}
+
+			$result = & ".\7za.exe" a -tzip $ZipArchiveDestination $SourceFiles -r -mmt
+			
+			if (-not [string]$result.ToUpper() -match 'EVERYTHING IS OK')
+			{
+				$errMessage = [string]::Format("Function Create7ZipFile`nFailed to zip files using 7zip.")
+				WriteToEventLog $_LogName $_LogSourceName $_ComputerName "Error" 1 $errMessage
+				$success = $false
+			}
 		}
 		else
 		{
-			foreach ($mask in $ArchiveMaskArray)
-			{
-				$SourceFile = [string]::Format("`"{0}\{1}`" ", $DirectoryPath, $mask)
-				$SourceFiles = $SourceFiles + $SourceFile
-			}
-		}
-		
-		$result = & ".\7za.exe" a -tzip $ZipArchiveDestination $SourceFiles -r -mmt
-		
-		if (-not [string]$result.ToUpper() -match 'EVERYTHING IS OK')
-		{
-			$errMessage = [string]::Format("Function Create7ZipFile`nFailed to zip files using 7zip.")
-			WriteToEventLog $_LogName $_LogSourceName $_ComputerName "Error" 1 $errMessage
-			$success = $false
+			# No files to archive.
+			
 		}
 	}
 	catch [System.Exception]
 	{
-		WriteToEventLog $_LogName $_LogSourceName $_ComputerName "Error" 1 [string]::Format("Function Create7ZipFile`n{0}", $error[0])
+		$errMessage = [string]::Format("Function Create7ZipFile`n{0}", $error[0])
+		WriteToEventLog $_LogName $_LogSourceName $_ComputerName "Error" 1 $errMessage
 		$success = $false
 	}
 	
