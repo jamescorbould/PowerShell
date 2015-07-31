@@ -112,7 +112,7 @@ Function GetFilesOlderThanXDays ($DirectoryPath, $CreationDateLimit)
 	return $files
 }
 
-Function Create7ZipFile ($DirectoryPath, $ZipFileName, $ArchiveMaskArray, $CreationDateLimit)
+Function CreateZipFile ($DirectoryPath, $ZipFileName, $ArchiveMaskArray, $CreationDateLimit)
 {
 	try
 	{
@@ -140,15 +140,19 @@ Function Create7ZipFile ($DirectoryPath, $ZipFileName, $ArchiveMaskArray, $Creat
 			{
 				# File mask(s) have been specified: only archive files that match the file mask.
 				
+				$countOfFilesToArchive = 0
+				
 				foreach ($mask in $ArchiveMaskArray)
 				{
 					foreach ($file in $filesToArchive)
 					{
 						$extension = [System.IO.Path]::GetExtension($file)
-						
-						if ([string]$extension.ToUpper() -match $mask.ToUpper())
+
+						# Check the file extension of this file and determine if it's in the list of file extensions that should be archived.
+						if ([string]$extension.ToUpper() -match ($mask.ToUpper() -replace "\*", ""))
 						{
 							$SourceFiles = $SourceFiles + [string]::Format("`"{0}\{1}`" ", $DirectoryPath, $file)
+							$countOfFilesToArchive += 1
 							
 							# Delete this file from the file array to reduce processing time O(n^2)
 							# TODO
@@ -157,13 +161,20 @@ Function Create7ZipFile ($DirectoryPath, $ZipFileName, $ArchiveMaskArray, $Creat
 				}
 			}
 
-			$result = & ".\7za.exe" a -tzip $ZipArchiveDestination $SourceFiles -r -mmt
-			
-			if (-not [string]$result.ToUpper() -match 'EVERYTHING IS OK')
+			if ($countOfFilesToArchive -gt 0)
 			{
-				$errMessage = [string]::Format("Function Create7ZipFile`nFailed to zip files using 7zip.")
-				WriteToEventLog $_LogName $_LogSourceName $_ComputerName "Error" 1 $errMessage
-				$success = $false
+				$result = & ".\7za.exe" a -tzip $ZipArchiveDestination $SourceFiles -r -mmt
+				
+				if (-not [string]$result.ToUpper() -match 'EVERYTHING IS OK')
+				{
+					$errMessage = [string]::Format("Function Create7ZipFile`nFailed to zip files using 7zip.")
+					WriteToEventLog $_LogName $_LogSourceName $_ComputerName "Error" 1 $errMessage
+					$success = $false
+				}
+			}
+			else
+			{
+				# No files to archive.
 			}
 		}
 		else
@@ -174,7 +185,7 @@ Function Create7ZipFile ($DirectoryPath, $ZipFileName, $ArchiveMaskArray, $Creat
 	}
 	catch [System.Exception]
 	{
-		$errMessage = [string]::Format("Function Create7ZipFile`n{0}", $error[0])
+		$errMessage = [string]::Format("Function CreateZipFile`n{0}", $error[0])
 		WriteToEventLog $_LogName $_LogSourceName $_ComputerName "Error" 1 $errMessage
 		$success = $false
 	}
@@ -301,7 +312,8 @@ Function DoArchive ($PurgeArchiveConfigXML)
 			catch [System.Exception]
 			{
 				$ProcessReport = $ProcessReport + "Failed - Archive of files older than '" + $KeepDays + " days' from directory '" + $DirectoryPath + "' could not be carried out.`n`n"
-				WriteToEventLog $_LogName $_LogSourceName $_ComputerName "Error" 1 [string]::Format("Function DoArchive`n{0}`n{1}", $ProcessReport, $error[0])
+				$errMessage = [string]::Format("Function DoArchive`n{0}`n{1}", $ProcessReport, $error[0])
+				WriteToEventLog $_LogName $_LogSourceName $_ComputerName "Error" 1 $errMessage
 				$ReadConfig = $false
 			}
 			
@@ -315,7 +327,7 @@ Function DoArchive ($PurgeArchiveConfigXML)
 				{
 					try
 					{
-						$success = Create7ZipFile $DirectoryPath $ZipFileName $ArchiveMaskArray $CreationTimeLimit
+						$success = CreateZipFile $DirectoryPath $ZipFileName $ArchiveMaskArray $CreationTimeLimit
 						
 						if (-not $success)
 						{
