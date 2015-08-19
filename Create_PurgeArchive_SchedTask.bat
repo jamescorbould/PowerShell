@@ -1,2 +1,3 @@
-schtasks /Create /TN "PurgeArchive Daily" /TR "Powershell.exe -WindowStyle:Hidden C:\scripts\PurgeArchiveScript.ps1 C:\scripts\PurgeArchiveConfigs.xml" /SC Daily /ST 12:00:00
+schtasks /Create /TN "Archive Files Daily" /TR "Powershell.exe -WindowStyle Hidden C:\scripts\PurgeArchiveFiles\PurgeArchiveScript.ps1 C:\scripts\PurgeArchiveFiles\PurgeArchiveConfigs.xml A" /SC Daily /ST 01:00:00
+schtasks /Create /TN "Purge Files Daily" /TR "Powershell.exe -WindowStyle Hidden C:\scripts\PurgeArchiveFiles\PurgeArchiveScript.ps1 C:\scripts\PurgeArchiveFiles\PurgeArchiveConfigs.xml P" /SC Daily /ST 03:00:00
 pause

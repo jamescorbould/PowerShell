@@ -124,7 +124,7 @@ Function CreateZipFile ($DirectoryPath, $ZipFileName, $ArchiveMaskArray, $Creati
 		# Get all files in the specified directory older than the date limit for archival.
 		[Array]$filesToArchive = GetFilesOlderThanXDays $DirectoryPath $CreationDateLimit
 		
-		if ($filesToArchive.Count -gt 1)
+		if ($filesToArchive.Count -ge 1)
 		{
 			if ($ArchiveMaskArray.Count -le 1)
 			{
@@ -169,7 +169,7 @@ Function CreateZipFile ($DirectoryPath, $ZipFileName, $ArchiveMaskArray, $Creati
 				{
 					$errMessage = [string]::Format("Function Create7ZipFile`nFailed to zip files using 7zip.")
 					WriteToEventLog $_LogName $_LogSourceName $_ComputerName "Error" 1 $errMessage
-					$success = $false
+					$success = "Function CreateZipFile Failed"
 				}
 			}
 			else
@@ -187,7 +187,7 @@ Function CreateZipFile ($DirectoryPath, $ZipFileName, $ArchiveMaskArray, $Creati
 	{
 		$errMessage = [string]::Format("Function CreateZipFile`n{0}", $error[0])
 		WriteToEventLog $_LogName $_LogSourceName $_ComputerName "Error" 1 $errMessage
-		$success = $false
+		$success = "Function CreateZipFile Failed"
 	}
 	
 	return $success
@@ -325,20 +325,15 @@ Function DoArchive ($PurgeArchiveConfigXML)
 				
 				if($DirectoryPathExists -eq $true)
 				{
-					try
-					{
-						$success = CreateZipFile $DirectoryPath $ZipFileName $ArchiveMaskArray $CreationTimeLimit
-						
-						if (-not $success)
-						{
-							throw [System.Exception]
-						}
-						
-						$ProcessReport = $ProcessReport + [string]::Format("Success - Archived file(s) older than {0} days' from directory '{1}'.`n`n", $KeepDays, $DirectoryPath)
-					}
-					catch [System.Exception]
+					$success = CreateZipFile $DirectoryPath $ZipFileName $ArchiveMaskArray $CreationTimeLimit
+					
+					if ($success -like 'Function CreateZipFile Failed')
 					{
 						$ProcessReport = $ProcessReport + [string]::Format("Failed - Archive of files older than {0} days' from directory '{1}' could not be carried out.`n`n", $KeepDays, $DirectoryPath)
+					}
+					else
+					{
+						$ProcessReport = $ProcessReport + [string]::Format("Success - Archived file(s) older than {0} days' from directory '{1}'.`n`n", $KeepDays, $DirectoryPath)
 					}
 				}
 				elseif($DirectoryPathExists -eq $FALSE)
