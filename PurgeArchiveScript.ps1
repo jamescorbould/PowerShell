@@ -1,14 +1,14 @@
 <#
 .NOTES
-	Author: 					James Corbould
-	Company:				Datacom Systems NZ Ltd
-	Purpose: 				Powershell script to archive files on Windows systems.
+	Author: 			James Corbould
+	Company:			Datacom Systems NZ Ltd
+	Purpose: 			Powershell script to archive files on Windows systems.
 	Dependency List:	.NET 3.5 minimum needs to be installed on the running machine.
-									Powershell needs to be installed on the running machine.
+						Powershell needs to be installed on the running machine.
 .CHANGE_HISTORY:
-Version		Date					Who		Change Description
------------		----------------		-------		----------------------------
-1.0.0.0 		14/07/2015		JC			Created.
+	Version		Date		Who		Change Description
+	-------		----------	-------	----------------------------
+	1.0.0.0 	14/07/2015	JC		Created.
 #>
 
 #================================================
@@ -38,7 +38,7 @@ Function WriteToEventLog ($log, $source, $computername, $type, $eventid, $messag
 	{
 		$success = $true
 		CreateLog $log $source $computername
-		Write-EventLog -LogName $log -EntryType Error -EventId 1 -Message $message.toString() -Source $source.toString() -ComputerName $computername.toString()
+		Write-EventLog -LogName $log -EntryType $type -EventId 1 -Message $message.toString() -Source $source.toString() -ComputerName $computername.toString()
 	}
 	catch [System.Exception]
 	{
@@ -112,7 +112,7 @@ Function GetFilesOlderThanXDays ($DirectoryPath, $CreationDateLimit)
 	return $files
 }
 
-Function CreateZipFile ($DirectoryPath, $ZipFileName, $ArchiveMaskArray, $CreationDateLimit)
+Function CreateZipFile ($DirectoryPath, $ZipFileName, $ArchiveMaskArray, $CreationDateLimit, $ZipExePath)
 {
 	try
 	{
@@ -126,14 +126,17 @@ Function CreateZipFile ($DirectoryPath, $ZipFileName, $ArchiveMaskArray, $Creati
 		
 		if ($filesToArchive.Count -ge 1)
 		{
-			if ($ArchiveMaskArray.Count -le 1)
+			if ($ArchiveMaskArray.Count -lt 1)
 			{
 				# No file masks specified - assume all files in the directory should be added to the compressed file.
 				# Equivalent to the file mask *.*.
 				
+				$countOfFilesToArchive = 0
+				
 				foreach ($file in $filesToArchive)
 				{
-					$SourceFiles = $SourceFiles + [string]::Format("{0}\{1} ", $DirectoryPath, $file)
+					$SourceFiles = $SourceFiles + [string]::Format("`"{0}\{1}`" ", $DirectoryPath, $file)
+					$countOfFilesToArchive += 1
 				}
 			}
 			else
@@ -163,9 +166,12 @@ Function CreateZipFile ($DirectoryPath, $ZipFileName, $ArchiveMaskArray, $Creati
 
 			if ($countOfFilesToArchive -gt 0)
 			{
-				$result = & ".\7za.exe" a -tzip $ZipArchiveDestination $SourceFiles -r -mmt
+				$result = & $ZipExePath a -tzip $ZipArchiveDestination $SourceFiles -r -mmt
 				
-				if (-not [string]$result.ToUpper() -match 'EVERYTHING IS OK')
+				# 7zip exe returns a string literal that contains the phrase 'Everything is Ok' if the zip operation has been successful.
+				$isOk = [string]$result -match 'Everything is Ok$'
+
+				if (-not $isOk)
 				{
 					$errMessage = [string]::Format("Function Create7ZipFile`nFailed to zip files using 7zip.")
 					WriteToEventLog $_LogName $_LogSourceName $_ComputerName "Error" 1 $errMessage
@@ -180,7 +186,6 @@ Function CreateZipFile ($DirectoryPath, $ZipFileName, $ArchiveMaskArray, $Creati
 		else
 		{
 			# No files to archive.
-			
 		}
 	}
 	catch [System.Exception]
@@ -212,7 +217,7 @@ Function DoPurge ($PurgeArchiveConfigXML)
 				$KeepDays = $PC.KeepDays
 				$DeleteMaskList = $PC.DeleteMasks
 				$DeleteMaskArray = $DeleteMaskList -split ";"
-				$CreationTimeLimit = (Get-Date).AddDays(-$DeleteDays)
+				$CreationTimeLimit = (Get-Date).AddDays(-$KeepDays)
 				$FilesCount = 0
 				$FilesDeletedCount = 0
 			}
@@ -308,6 +313,7 @@ Function DoArchive ($PurgeArchiveConfigXML)
 				$FilesArchivedCount = 0
 				$DateTime = [string](Get-Date -Format "yyyy-MM-dd-hh_mm_ss")
 				$ZipFileName = [string]::Format("{0}-{1}{2}", $PC.ProjectName, $DateTime, ".zip")
+				$ZipExePath = $PC.ZipExePath
 			}
 			catch [System.Exception]
 			{
@@ -325,7 +331,7 @@ Function DoArchive ($PurgeArchiveConfigXML)
 				
 				if($DirectoryPathExists -eq $true)
 				{
-					$success = CreateZipFile $DirectoryPath $ZipFileName $ArchiveMaskArray $CreationTimeLimit
+					$success = CreateZipFile $DirectoryPath $ZipFileName $ArchiveMaskArray $CreationTimeLimit $ZipExePath
 					
 					if ($success -like 'Function CreateZipFile Failed')
 					{

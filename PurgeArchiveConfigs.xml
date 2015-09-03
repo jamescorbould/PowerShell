@@ -2,15 +2,16 @@
 	<PurgeConfig>
 		<ProjectName>ICP Comms Platform</ProjectName>
 		<ProjectActive>true</ProjectActive>
-		<DirectoryPath>C:\Temp\BizTalk\TestOut</DirectoryPath>
+		<DirectoryPath>C:\BizTalk Folders\DV-BizTalk\ICP\Out\CIRequest_Submit_Received</DirectoryPath>
 		<KeepDays>0</KeepDays>
 		<DeleteMasks>*.zip</DeleteMasks>
 	</PurgeConfig>
 	<ArchiveConfig>
 		<ProjectName>ICP Comms Platform</ProjectName>
 		<ProjectActive>true</ProjectActive>
-		<DirectoryPath>C:\Temp\BizTalk\TestOut</DirectoryPath>
+		<DirectoryPath>C:\BizTalk Folders\DV-BizTalk\ICP\Out\CIRequest_Submit_Received</DirectoryPath>
 		<KeepDays>0</KeepDays>
-		<ArchiveMasks>*.txt;*.xml</ArchiveMasks>
+		<ArchiveMasks>*.xml</ArchiveMasks>
+		<ZipExePath>C:\scripts\PurgeArchiveFiles\7za.exe</ZipExePath>
 	</ArchiveConfig>
 </PurgeArchiveConfigs>
